@@ -1,0 +1,78 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      windows_offline:
+        description: Include the offline WebView2 installer in the Windows EXE
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-x64
+            os: ubuntu-22.04
+            script: build:linux
+          - platform: windows-x64
+            os: windows-2025
+            script: build:windows
+          - platform: macos-universal
+            os: macos-15
+            script: build:macos:universal
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: always
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget file pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf squashfs-tools
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+      - name: Install both macOS targets
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - name: Install project dependencies
+        run: npm ci
+      - name: Check application logic
+        timeout-minutes: 5
+        run: npm run test:unit
+      - name: Build installer
+        if: matrix.platform != 'windows-x64' || !inputs.windows_offline
+        run: npm run ${{ matrix.script }}
+      - name: Build offline Windows installer
+        if: matrix.platform == 'windows-x64' && inputs.windows_offline
+        run: npm run build:windows:offline
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: neuron-map-${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            src-tauri/target/**/bundle/deb/*.deb
+            src-tauri/target/**/bundle/appimage/*.AppImage
+            src-tauri/target/**/bundle/nsis/*.exe
+            src-tauri/target/**/bundle/dmg/*.dmg

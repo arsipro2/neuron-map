@@ -1,0 +1,550 @@
+[
+  {
+    "name": "legacy-v1",
+    "valid": true,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 1,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "bounded-coordinates",
+    "valid": true,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              100000,
+              -100000,
+              0
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "overflow-coordinates",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1e+40,
+              0,
+              0
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "invalid-camera",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": {
+          "position": [
+            0,
+            0,
+            1
+          ],
+          "quaternion": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "orbit_target": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "tags-and-stable-links",
+    "valid": true,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "tags": [
+              "research"
+            ],
+            "linkTargets": {
+              "other": "other"
+            }
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "empty-tag",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "tags": [
+              " "
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "canonical-base64",
+    "valid": true,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "attachments": [
+              {
+                "id": "file",
+                "name": "a.bin",
+                "mime": "application/octet-stream",
+                "size": 1,
+                "addedAt": 0
+              }
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": [
+        {
+          "id": "file",
+          "data": "AA=="
+        }
+      ]
+    }
+  },
+  {
+    "name": "noncanonical-base64",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "attachments": [
+              {
+                "id": "file",
+                "name": "a.bin",
+                "mime": "application/octet-stream",
+                "size": 1,
+                "addedAt": 0
+              }
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": [
+        {
+          "id": "file",
+          "data": "AB=="
+        }
+      ]
+    }
+  },
+  {
+    "name": "path-filename",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "attachments": [
+              {
+                "id": "file",
+                "name": "../file.bin",
+                "mime": "application/octet-stream",
+                "size": 1,
+                "addedAt": 0
+              }
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": [
+        {
+          "id": "file",
+          "data": "AA=="
+        }
+      ]
+    }
+  },
+  {
+    "name": "backslash-filename",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ],
+            "attachments": [
+              {
+                "id": "file",
+                "name": "folder\\file.bin",
+                "mime": "application/octet-stream",
+                "size": 1,
+                "addedAt": 0
+              }
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": [
+        {
+          "id": "file",
+          "data": "AA=="
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid-node-id",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "a\u0000b",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "trash-connection",
+    "valid": true,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "edges": [],
+        "camera": null,
+        "trash": {
+          "nodes": [
+            {
+              "node": {
+                "id": "gone",
+                "title": "Note",
+                "summary": "",
+                "content": "Text",
+                "position": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "deletedAt": 123
+            }
+          ],
+          "edges": [
+            {
+              "id": "link",
+              "source": "note",
+              "target": "gone"
+            }
+          ]
+        }
+      },
+      "files": []
+    }
+  },
+  {
+    "name": "live-edge-to-trash",
+    "valid": false,
+    "workspace": {
+      "format": "neuron-map-workspace",
+      "version": 3,
+      "exported_at": 0,
+      "workspace": {
+        "name": "Fixture",
+        "created_at": 0,
+        "updated_at": 0
+      },
+      "state": {
+        "nodes": [
+          {
+            "id": "note",
+            "title": "Note",
+            "summary": "",
+            "content": "Text",
+            "position": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "id": "link",
+            "source": "note",
+            "target": "gone"
+          }
+        ],
+        "camera": null,
+        "trash": {
+          "nodes": [
+            {
+              "node": {
+                "id": "gone",
+                "title": "Note",
+                "summary": "",
+                "content": "Text",
+                "position": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "deletedAt": 123
+            }
+          ],
+          "edges": []
+        }
+      },
+      "files": []
+    }
+  }
+]

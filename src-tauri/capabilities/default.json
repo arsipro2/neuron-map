@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Local main window events and closing after a successful save",
+  "windows": ["main"],
+  "permissions": ["core:default", "core:window:allow-destroy"]
+}

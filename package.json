@@ -1,0 +1,64 @@
+{
+  "name": "neuron-map",
+  "private": true,
+  "version": "0.22.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:web": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build",
+    "test:unit": "node tests/run-unit.mjs",
+    "test:e2e": "playwright test",
+    "test:storage": "cargo test --manifest-path storage-tests/Cargo.toml --locked",
+    "check:versions": "node scripts/check-versions.mjs",
+    "prepare:pdf": "node scripts/prepare-pdf-assets.mjs",
+    "prebuild": "npm run check:versions && npm run prepare:pdf",
+    "predev:web": "npm run prepare:pdf",
+    "predev": "npm run prepare:pdf",
+    "test:production": "npm run build && playwright test -c playwright.production.config.ts",
+    "build:linux": "node scripts/build-installer.mjs linux",
+    "build:linux:deb": "node scripts/build-installer.mjs linux-deb",
+    "build:linux:appimage": "node scripts/build-installer.mjs linux-appimage",
+    "build:windows": "node scripts/build-installer.mjs windows",
+    "build:windows:msi": "node scripts/build-installer.mjs windows-msi",
+    "build:windows:offline": "node scripts/build-installer.mjs windows-offline",
+    "build:macos": "node scripts/build-installer.mjs macos",
+    "build:macos:universal": "node scripts/build-installer.mjs macos-universal"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.8",
+    "@react-three/fiber": "9.7.0",
+    "@tauri-apps/api": "2.12.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "three": "0.180.0",
+    "zustand": "5.0.8",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "rehype-highlight": "7.0.2",
+    "pdfjs-dist": "6.4.299"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tauri-apps/cli": "2.12.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "0.180.0",
+    "@vitejs/plugin-react": "5.0.4",
+    "typescript": "5.9.2",
+    "vite": "7.3.6",
+    "esbuild": "0.25.12"
+  },
+  "engines": {
+    "node": ">=22.13.0",
+    "npm": ">=10"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "fsevents": false
+  }
+}
