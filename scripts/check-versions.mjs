@@ -9,6 +9,6 @@ assert.equal(lock.packages[''].version, pkg.version)
 for (const name of ['@tauri-apps/api', '@tauri-apps/cli']) {
   const expected = pkg.dependencies[name] ?? pkg.devDependencies[name]
   assert.equal(lock.packages[`node_modules/${name}`].version, expected)
-  assert.equal(expected, cargoLock.match(/name = "tauri"\nversion = "([^"]+)"/)?.[1])
+  assert.equal(expected, cargoLock.match(/name = "tauri"\r?\nversion = "([^"]+)"/)?.[1])
 }
 console.log(`Neuron Map ${pkg.version}: project versions and Tauri API / CLI / Rust match.`)
