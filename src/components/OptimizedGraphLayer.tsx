@@ -5,13 +5,14 @@ import * as THREE from 'three'
 import { graphEngine } from '../engine/graphEngine'
 import { useGraphStore } from '../store/useGraphStore'
 import { edgeMidpoint, edgePoint, hashNumber } from '../engine/edgeGeometry'
+import { EdgeProjection } from '../engine/edgeProjection'
 import { visibleNoteIds } from '../services/graphView'
 import type { Edge, Vec3 } from '../types'
 
 const tmpColor = new THREE.Color()
 const NODE_FONT = '/fonts/NotoSans-Regular.ttf'
 
-export const graphDiagnostics = { edgeGeometryBuilds: 0 }
+export const graphDiagnostics = { edgeGeometryBuilds: 0, visibleEdges: 0 }
 
 function GraphEngineBridge() {
   const structureVersion = useGraphStore((s) => s.structureVersion)
@@ -191,22 +192,22 @@ function BatchedEdgeLayer({ reducedMotion, pulseCount: activePulses }: { reduced
   }, [pulseColors, pulsePositions])
   const pulseMaterial = useMemo(() => new THREE.PointsMaterial({ size: 3.1, sizeAttenuation: false, transparent: true, opacity: 0.72, vertexColors: true, depthWrite: false, blending: THREE.AdditiveBlending }), [])
   const cache = useRef({ stamp: '', edges: null as Edge[] | null, pulses: [] as Array<{ a: Vec3; mid: Vec3; b: Vec3; hash: number }> })
-  const projected = useMemo(() => new THREE.Vector3(), [])
+  const projection = useMemo(() => new EdgeProjection(), [])
   useFrame(({ clock }) => {
     const runtime = graphEngine.runtime, visible = visibleNoteIds()
+    camera.updateMatrixWorld()
     const stamp = `${runtime.version}:${camera.matrixWorld.elements.join(',')}:${camera.projectionMatrix.elements.join(',')}:${selectedId}:${selectedEdgeId}:${neighborhoodId}:${reducedMotion}`
     if (cache.current.stamp !== stamp || cache.current.edges !== edges) {
       cache.current = { stamp, edges, pulses: [] }; graphDiagnostics.edgeGeometryBuilds++
+      projection.setCamera(camera)
       let v = 0
       for (const edge of edges) {
         if (visible && (!visible.has(edge.source) || !visible.has(edge.target))) continue
         const a = runtime.positionOf(edge.source), b = runtime.positionOf(edge.target); if (!a || !b) continue
         const mid = edgeMidpoint(edge.id, a, b)
-        projected.set(...mid).project(camera)
-        if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1.25 || Math.abs(projected.y) > 1.25) continue
-        const distance = camera.position.distanceTo(new THREE.Vector3(...mid))
+        if (!projection.project(a, mid, b)) continue
+        const distance = Math.hypot(camera.position.x - mid[0], camera.position.y - mid[1], camera.position.z - mid[2])
         const active = edge.id === selectedEdgeId || edge.source === selectedId || edge.target === selectedId
-        if (distance > 95 && !active) continue
         tmpColor.set(active ? '#fff4ae' : '#d8c79d')
         for (const point of [a, mid, mid, b]) {
           const o = v++ * 3; positions.set(point, o); colors.set([tmpColor.r, tmpColor.g, tmpColor.b], o)
@@ -217,6 +218,7 @@ function BatchedEdgeLayer({ reducedMotion, pulseCount: activePulses }: { reduced
         }
       }
       geometry.setDrawRange(0, v)
+      graphDiagnostics.visibleEdges = v / 4
       geometry.getAttribute('position').needsUpdate = true; geometry.getAttribute('color').needsUpdate = true
       pulseGeometry.getAttribute('color').needsUpdate = true
       material.opacity = edges.length > 2500 ? 0.35 : 0.52; glowMaterial.opacity = edges.length > 1800 ? 0.025 : 0.06
@@ -399,24 +401,21 @@ function nodeAtScreenPointFallback(camera: THREE.Camera, canvas: HTMLCanvasEleme
 
 function edgeAtScreenPoint(edges: Edge[], camera: THREE.Camera, canvas: HTMLCanvasElement, clientX: number, clientY: number) {
   const bounds = canvas.getBoundingClientRect(), runtime = graphEngine.runtime, visible = visibleNoteIds()
+  if (!bounds.width || !bounds.height) return null
+  camera.updateMatrixWorld()
+  const projection = new EdgeProjection().setCamera(camera)
   let bestId: string | null = null, best = 9
   for (const edge of edges) {
     if (visible && (!visible.has(edge.source) || !visible.has(edge.target))) continue
     const a = runtime.positionOf(edge.source), b = runtime.positionOf(edge.target); if (!a || !b) continue
-    const mid = edgeMidpoint(edge.id, a, b), worldMid = new THREE.Vector3(...mid), projectedMid = worldMid.clone().project(camera)
-    const selected = useGraphStore.getState()
-    if (projectedMid.z < -1 || projectedMid.z > 1 || Math.abs(projectedMid.x) > 1.25 || Math.abs(projectedMid.y) > 1.25
-      || (camera.position.distanceTo(worldMid) > 95 && edge.id !== selected.selectedEdgeId && edge.source !== selected.selectedId && edge.target !== selected.selectedId)) continue
-    const points = [a, mid, b].map(point => new THREE.Vector3(...point).project(camera))
-    if (points.some(point => point.z < -1 || point.z > 1)) continue
-    for (let segment = 0; segment < 2; segment++) {
-      const start = points[segment], end = points[segment + 1]
+    if (!projection.project(a, edgeMidpoint(edge.id, a, b), b)) continue
+    for (const { start, end, visible: segmentVisible } of projection.segments) {
+      if (!segmentVisible) continue
       const ax = bounds.left + (start.x * 0.5 + 0.5) * bounds.width, ay = bounds.top + (-start.y * 0.5 + 0.5) * bounds.height
       const bx = bounds.left + (end.x * 0.5 + 0.5) * bounds.width, by = bounds.top + (-end.y * 0.5 + 0.5) * bounds.height
       const vx = bx - ax, vy = by - ay, len2 = vx * vx + vy * vy
       if (len2 < 1) continue
       const t = THREE.MathUtils.clamp(((clientX - ax) * vx + (clientY - ay) * vy) / len2, 0, 1)
-      if ((segment === 0 && t < 0.26) || (segment === 1 && t > 0.74)) continue
       const distance = Math.hypot(clientX - ax - vx * t, clientY - ay - vy * t)
       if (distance < best) { best = distance; bestId = edge.id }
     }

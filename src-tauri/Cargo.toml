@@ -1,6 +1,6 @@
 [package]
 name = "neuron-map"
-version = "0.22.2"
+version = "0.22.3"
 description = "A local-first 3D knowledge graph"
 authors = ["ArsiPro"]
 edition = "2021"
