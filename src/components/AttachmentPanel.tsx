@@ -4,7 +4,7 @@ import { AttachmentPreview } from './AttachmentPreview'
 import type { Attachment, NoteNode } from '../types'
 import { useGraphStore } from '../store/useGraphStore'
 import { getActiveWorkspaceId } from '../services/persistence'
-import { downloadAttachment, MAX_ATTACHMENT_BYTES, MAX_WORKSPACE_ATTACHMENT_BYTES, readAttachment, storeAttachment } from '../services/attachments'
+import { downloadAttachment, isDesktop, openAttachment, MAX_ATTACHMENT_BYTES, MAX_WORKSPACE_ATTACHMENT_BYTES, readAttachment, storeAttachment } from '../services/attachments'
 
 type Props = { node: Pick<NoteNode, 'id' | 'attachments'>; onBusyChange: (busy: boolean, message?: string) => void }
 export const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / 1024 ** 2).toFixed(1)} MiB`
@@ -12,8 +12,18 @@ export const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : byte
 function AttachmentRow({ file, onRemove, onError }: { file: Attachment; onRemove: () => void; onError: (message: string) => void }) {
   const [preview, setPreview] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [action, setAction] = useState<'opening' | 'saving' | null>(null)
+  const busy = useRef(false)
+  const desktop = isDesktop()
   const workspaceId = getActiveWorkspaceId()
+  const act = async (next: 'opening' | 'saving') => {
+    if (!workspaceId || busy.current) return
+    busy.current = true; setAction(next); onError('')
+    try {
+      await (next === 'opening' ? openAttachment : downloadAttachment)(workspaceId, file)
+    } catch (error) { onError(error instanceof Error ? error.message : String(error)) }
+    finally { busy.current = false; setAction(null) }
+  }
   useEffect(() => {
     if (!workspaceId || !['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif'].includes(file.mime) || file.size > 5 * 1024 * 1024) return
     let cancelled = false, url: string | null = null
@@ -25,14 +35,15 @@ function AttachmentRow({ file, onRemove, onError }: { file: Attachment; onRemove
   }, [workspaceId, file.id, file.mime, file.size])
   return <li className="attachment-row">
     {preview ? <img src={preview} alt="" className="attachment-thumb" /> : <span className="attachment-icon" aria-hidden="true">↧</span>}
-    <button className="attachment-name" disabled={downloading} title={`Save ${file.name}`} onClick={async () => {
-      if (!workspaceId) return
-      setDownloading(true)
-      try { await downloadAttachment(workspaceId, file) } catch (error) { onError(String(error)) } finally { setDownloading(false) }
-    }}><strong>{file.name}</strong><small>{formatBytes(file.size)} · {downloading ? 'Saving…' : 'Save a copy'}</small></button>
-    {['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif', 'application/pdf'].includes(file.mime) || /\.pdf$/i.test(file.name) ? <button aria-label={`Preview ${file.name}`} onClick={() => setExpanded(true)}>Preview</button> : null}
+    <button className="attachment-name" disabled={action !== null} title={`${desktop ? 'Open' : 'Save'} ${file.name}`} onClick={() => void act(desktop ? 'opening' : 'saving')}>
+      <strong>{file.name}</strong><small>{formatBytes(file.size)} · {action === 'opening' ? 'Opening…' : action === 'saving' ? 'Saving…' : desktop ? 'Open in default app' : 'Save a copy'}</small>
+    </button>
+    <button className="icon-btn danger" disabled={action !== null} title={`Remove ${file.name}`} aria-label={`Remove ${file.name}`} onClick={onRemove}>×</button>
+    <div className="attachment-actions">
+      {desktop ? <button disabled={action !== null} aria-label={`Save a copy of ${file.name}`} onClick={() => void act('saving')}>Save a copy</button> : null}
+      {['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif', 'application/pdf'].includes(file.mime) || /\.pdf$/i.test(file.name) ? <button aria-label={`Preview ${file.name}`} onClick={() => setExpanded(true)}>Preview</button> : null}
+    </div>
     {expanded && workspaceId ? <AttachmentPreview file={file} workspaceId={workspaceId} onClose={() => setExpanded(false)} /> : null}
-    <button className="icon-btn danger" title={`Remove ${file.name}`} aria-label={`Remove ${file.name}`} onClick={onRemove}>×</button>
   </li>
 }
 
@@ -70,6 +81,7 @@ export function AttachmentPanel({ node, onBusyChange }: Props) {
     {node.attachments?.length ? <ul className="attachment-list">{node.attachments.map((file) => <AttachmentRow key={file.id} file={file} onError={setError} onRemove={() => {
       if (window.confirm(`Remove “${file.name}” from this note?`)) useGraphStore.getState().updateNode(node.id, { attachments: node.attachments?.filter((item) => item.id !== file.id) })
     }} />)}</ul> : <p className="attachment-hint">Drop files here or choose them above. Any file type, up to 20 MiB each.</p>}
+    {isDesktop() && node.attachments?.length ? <p className="attachment-hint">Click a filename to open a copy in your default app. To keep external edits in this note, attach the edited file again.</p> : null}
     {error ? <p className="attachment-error" role="alert">{error}</p> : null}
   </section>
 }

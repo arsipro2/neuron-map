@@ -90,6 +90,13 @@ export async function downloadAttachment(workspaceId: string, attachment: Attach
   } else downloadBlob(await readAttachment(workspaceId, attachment), attachment.name)
 }
 
+export async function openAttachment(workspaceId: string, attachment: Attachment) {
+  if (!isDesktop()) return downloadAttachment(workspaceId, attachment)
+  const { invoke } = await import('@tauri-apps/api/core')
+  // Rust resolves the stored file by ID; the frontend cannot supply a path or command.
+  await invoke('open_attachment', { workspaceId, attachmentId: attachment.id })
+}
+
 export async function exportFiles(workspaceId: string, attachments: Attachment[]): Promise<FilePayload[]> {
   const result: FilePayload[] = []
   for (const attachment of attachments) result.push({ id: attachment.id, data: await blobToBase64(await readAttachment(workspaceId, attachment)) })

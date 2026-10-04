@@ -1,4 +1,5 @@
 mod storage;
+mod attachment_open;
 use storage::*;
 use tauri::{AppHandle, Manager};
 
@@ -84,6 +85,16 @@ async fn read_attachment(app: AppHandle, workspace_id: String, attachment_id: St
   tauri::async_runtime::spawn_blocking(move || storage::read_attachment(db, workspace_id, attachment_id)).await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn open_attachment(app: AppHandle, workspace_id: String, attachment_id: String) -> Result<(), String> {
+  let db = database(&app)?;
+  let cache = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("opened-attachments");
+  tauri::async_runtime::spawn_blocking(move || {
+    let (name, data) = storage::attachment_bytes(db, workspace_id, attachment_id)?;
+    let copy = attachment_open::prepare_copy(&cache, &name, &data).map_err(|e| format!("Could not prepare attachment: {e}"))?;
+    tauri_plugin_opener::open_path(&copy, None::<&str>).map_err(|e| format!("Could not open attachment. Check that a default application is installed for this file type. {e}"))
+  }).await.map_err(|e| e.to_string())?
+}
+#[tauri::command]
 async fn save_attachment_as(app: AppHandle, workspace_id: String, attachment_id: String) -> Result<Option<String>, String> {
   let db = database(&app)?;
   let (name, data) = tauri::async_runtime::spawn_blocking(move || storage::attachment_bytes(db, workspace_id, attachment_id)).await.map_err(|e| e.to_string())??;
@@ -123,7 +134,7 @@ pub fn run() {
   builder.invoke_handler(tauri::generate_handler![bootstrap_workspaces, load_workspace, save_workspace,
       create_workspace, rename_workspace, delete_workspace, export_workspace_file, import_workspace_payload,
       pick_and_import_workspace_file, list_workspace_backups, restore_workspace_backup,
-      store_attachment, read_attachment, save_attachment_as, cleanup_attachments, save_workspace_copy])
+      store_attachment, read_attachment, open_attachment, save_attachment_as, cleanup_attachments, save_workspace_copy])
     .run(tauri::generate_context!())
     .expect("error while running Neuron Map");
 }

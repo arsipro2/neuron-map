@@ -1,6 +1,9 @@
 name: Build installers
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       windows_offline:
@@ -10,6 +13,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: installers-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -41,6 +48,12 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Check versions and release tag
+        run: |
+          npm run check:versions
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const tag = process.env.GITHUB_REF_NAME; assert.equal(tag, `v${JSON.parse(fs.readFileSync("package.json")).version}`); fs.accessSync(`releases/${tag}.md`)'
+          fi
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         run: |
@@ -58,21 +71,53 @@ jobs:
       - name: Check application logic
         timeout-minutes: 5
         run: npm run test:unit
+      - name: Check SQLite and attachment copies
+        timeout-minutes: 10
+        run: npm run test:storage
       - name: Build installer
-        if: matrix.platform != 'windows-x64' || !inputs.windows_offline
+        if: matrix.platform != 'windows-x64' || (github.ref_type != 'tag' && !inputs.windows_offline)
         run: npm run ${{ matrix.script }}
       - name: Build offline Windows installer
-        if: matrix.platform == 'windows-x64' && inputs.windows_offline
+        if: matrix.platform == 'windows-x64' && (github.ref_type == 'tag' || inputs.windows_offline)
         run: npm run build:windows:offline
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: neuron-map-${{ matrix.platform }}
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+          overwrite: true
           path: |
             src-tauri/target/**/bundle/deb/*.deb
             src-tauri/target/**/bundle/appimage/*.AppImage
             src-tauri/target/**/bundle/nsis/*.exe
             src-tauri/target/**/bundle/dmg/*.dmg
+
+  release:
+    name: Publish release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Download installers from this run
+        run: gh run download "$GITHUB_RUN_ID" --pattern 'neuron-map-*' --dir artifacts
+      - name: Validate release assets and calculate checksums
+        run: node scripts/prepare-release.mjs artifacts release-assets
+      - name: Publish installers
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --verify-tag --title "Neuron Map $GITHUB_REF_NAME" \
+            --notes-file "releases/$GITHUB_REF_NAME.md"

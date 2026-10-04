@@ -489,7 +489,10 @@ button.wiki-link.resolved:hover { color: #fff0a5; background: rgba(255,218,105,.
 .attach-button { background: #27231b; color: #f2dfa1; border: 1px solid #4c4126; border-radius: 5px; padding: 5px 7px; font-size: 10px; cursor: pointer; }
 .attachment-hint { font-size: 11px; color: #9a9588; line-height: 1.5; }
 .attachment-list { list-style: none; padding: 0; margin: 8px 0 0; }
-.attachment-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; }
+.attachment-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 0; }
+.attachment-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.attachment-actions:empty { display: none; }
+.attachment-row button:disabled { opacity: .55; cursor: wait; }
 .attachment-thumb, .attachment-icon { width: 34px; height: 34px; flex-shrink: 0; border-radius: 5px; object-fit: cover; }
 .attachment-icon { display: grid; place-items: center; background: #26231b; color: #dfca88; }
 .attachment-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; color: #e4ddc9; cursor: pointer; }
@@ -503,7 +506,7 @@ button:disabled { opacity: .38; cursor: default; }
 button:focus-visible, select:focus-visible { outline: 2px solid #e9c879; outline-offset: 2px; }
 .tags-block input, .note-link-picker select { width: 100%; min-width: 0; background: #151923; border: 1px solid #343441; border-radius: 8px; padding: 8px 10px; color: #e7e1d6; font: inherit; font-size: 12px; }
 .note-tools { display: flex; gap: 7px; }
-.note-tools button, .attachment-row > button:not(.attachment-name), .preview-controls button, .modal button { border: 1px solid #3c3b44; background: #23222a; border-radius: 7px; color: #e7dfcc; padding: 7px 10px; cursor: pointer; font-size: 12px; }
+.note-tools button, .attachment-row > button:not(.attachment-name), .attachment-actions button, .preview-controls button, .modal button { border: 1px solid #3c3b44; background: #23222a; border-radius: 7px; color: #e7dfcc; padding: 7px 10px; cursor: pointer; font-size: 12px; }
 .note-link-picker { display: grid; gap: 7px; }
 .search-result small { color: #b3a78f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .modal { width: min(760px, 92vw); max-height: 85vh; padding: 0; border: 1px solid #484248; border-radius: 16px; color: #eae6de; background: #14151c; box-shadow: 0 24px 100px #000a; }

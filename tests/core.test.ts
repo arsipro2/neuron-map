@@ -7,6 +7,7 @@ import { searchNotes } from '../src/services/searchNotes'
 import fixtures from './fixtures/workspace-validation.json'
 import { parseWorkspaceFile } from '../src/services/workspaceFormat'
 import { hydratePersistence, flushPersist, getPersistenceStatus, installGraphPersistenceSubscription, reloadWorkspace, getActiveWorkspaceId } from '../src/services/persistence'
+import { openAttachment, downloadAttachment } from '../src/services/attachments'
 
 class FakeWorker {
   static current: FakeWorker
@@ -168,4 +169,25 @@ test('failed saves retry with the latest memory state and preserve the visible e
   assert.equal(writes.at(-1).nodes[0].content, 'edit after failed save')
   assert.equal(getPersistenceStatus().state, 'saved')
   unsubscribe()
+})
+
+test('desktop opening uses stored IDs, stays separate from Save a copy and propagates errors', async () => {
+  const previous = (globalThis as any).window
+  const calls: unknown[] = []
+  const attachment = { id: 'file-id', name: '../../not-a-path.txt', mime: 'text/plain', size: 3, addedAt: 1 }
+  let fail = false
+  Object.assign(globalThis, { window: { __TAURI_INTERNALS__: { invoke: async (command: string, args: unknown) => {
+    calls.push([command, args])
+    if (fail) throw new Error('No default application')
+  } } } })
+  try {
+    await openAttachment('workspace-id', attachment)
+    await downloadAttachment('workspace-id', attachment)
+    assert.deepEqual(calls, [
+      ['open_attachment', { workspaceId: 'workspace-id', attachmentId: 'file-id' }],
+      ['save_attachment_as', { workspaceId: 'workspace-id', attachmentId: 'file-id' }],
+    ])
+    fail = true
+    await assert.rejects(openAttachment('workspace-id', attachment), /No default application/)
+  } finally { Object.assign(globalThis, { window: previous }) }
 })

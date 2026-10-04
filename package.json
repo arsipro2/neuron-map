@@ -1,7 +1,7 @@
 {
   "name": "neuron-map",
   "private": true,
-  "version": "0.22.1",
+  "version": "0.22.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "desktop": "tauri dev",
     "desktop:build": "tauri build",
-    "test:unit": "node tests/run-unit.mjs",
+    "test:unit": "node tests/run-unit.mjs && node --test tests/release.test.mjs",
     "test:e2e": "playwright test",
     "test:storage": "cargo test --manifest-path storage-tests/Cargo.toml --locked",
     "check:versions": "node scripts/check-versions.mjs",

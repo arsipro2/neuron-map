@@ -385,7 +385,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-and-workspace">
-          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.22.1</span></div></div>
+          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.22.2</span></div></div>
           <WorkspaceMenu
             workspaces={workspaces}
             activeWorkspace={activeWorkspace}
