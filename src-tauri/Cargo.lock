@@ -2218,7 +2218,7 @@ dependencies = [
 
 [[package]]
 name = "neuron-map"
-version = "0.22.3"
+version = "0.22.4"
 dependencies = [
  "base64 0.22.1",
  "rfd",
