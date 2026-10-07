@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import './edgeProjection.test'
+import './layoutPhysics.test'
 import assert from 'node:assert/strict'
 import { useGraphStore } from '../src/store/useGraphStore'
 import { graphEngine } from '../src/engine/graphEngine'
