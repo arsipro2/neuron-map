@@ -52,3 +52,39 @@ test('auto layout separates branches, supports undo, and saves the arranged posi
   await expect(page.locator('.content-input')).toHaveValue('Content beta')
   expect(errors).toEqual([])
 })
+
+test('auto layout unfolds inward branches while keeping their root fixed', async ({ page }) => {
+  const coordinates = [[0, 0, 0], [4, 0, 0], [2, 2, 0], [1, 3, 0], [-4, 0, 0], [-2, -2, 0], [-1, -3, 0]]
+  const ids = ['alpha', 'right1', 'right2', 'right3', 'left1', 'left2', 'left3']
+  const nodes = coordinates.map((position, i) => ({ ...fixture.nodes[0], id: ids[i], title: i ? ids[i] : 'Alpha', position }))
+  const edges = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6]].map(([a, b], i) => ({ id: `e${i}`, source: ids[a], target: ids[b] }))
+  await page.addInitScript(state => localStorage.setItem('neuron-map-workspace-web-default', JSON.stringify(state)), {
+    ...fixture, nodes, edges, camera: { ...fixture.camera, position: [0, 0, 22] },
+  })
+  await page.goto('/')
+  await expect(page.locator('.title-input')).toHaveValue('Alpha')
+  await page.getByRole('button', { name: 'Editor', exact: true }).click()
+  await page.screenshot({ path: 'test-results/folded-branches-before.png' })
+  await page.getByRole('button', { name: '⚙', exact: true }).click()
+  await page.getByRole('button', { name: 'Auto layout', exact: true }).click()
+  await expect.poll(() => page.evaluate(async () => {
+    const { useGraphStore } = await import('/src/store/useGraphStore.ts')
+    const positions = useGraphStore.getState().nodes.map(node => node.position)
+    return positions[2][0] - positions[1][0]
+  })).toBeGreaterThan(2)
+  const positions = await page.evaluate(async () => (await import('/src/store/useGraphStore.ts')).useGraphStore.getState().nodes.map(node => node.position))
+  expect(positions[0]).toEqual([0, 0, 0])
+  for (const [sign, branch] of [[1, [0, 1, 2, 3]], [-1, [0, 4, 5, 6]]] as const) {
+    for (let i = 1; i < branch.length; i++) expect(sign * (positions[branch[i]][0] - positions[branch[i - 1]][0])).toBeGreaterThan(2)
+    for (let i = 1; i < branch.length - 1; i++) {
+      const [a, b, c] = [branch[i - 1], branch[i], branch[i + 1]]
+      const incoming = positions[b].map((n, axis) => n - positions[a][axis])
+      const outgoing = positions[c].map((n, axis) => n - positions[b][axis])
+      const dot = incoming.reduce((sum, n, axis) => sum + n * outgoing[axis], 0)
+      expect(dot / (Math.hypot(...incoming) * Math.hypot(...outgoing))).toBeGreaterThan(.8)
+    }
+  }
+  await expect(page.locator('.top-stats')).toContainText('7 notes')
+  await expect(page.locator('.top-stats')).toContainText('6 links')
+  await page.screenshot({ path: 'test-results/folded-branches-after.png' })
+})

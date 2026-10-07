@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { applyLayoutIteration, deterministicDirection, GRAPH_SPACING } from '../engine/layoutPhysics'
+import { applyLayoutIteration, buildLayoutBranches, deterministicDirection, GRAPH_SPACING, type LayoutBranches } from '../engine/layoutPhysics'
 declare const self: DedicatedWorkerGlobalScope
 type InitMessage = { type: 'init'; revision: number; ids: string[]; positions: ArrayBuffer; edges: ArrayBuffer }
 type DragStartMessage = { type: 'dragStart'; index: number; target: [number, number, number] }
@@ -14,6 +14,7 @@ let velocities = new Float32Array(0)
 let edges = new Int32Array(0)
 let adjacency: number[][] = []
 let layoutNeighbors: Set<number>[] = []
+let layoutBranches: LayoutBranches | null = null
 let activeMask = new Uint8Array(0)
 let draggingIndex = -1
 let dragTarget: [number, number, number] = [0, 0, 0]
@@ -180,7 +181,7 @@ function step() {
   let active = false
   if (layoutIterations > 0) {
     const batch = Math.min(5, layoutIterations)
-    for (let i = 0; i < batch; i += 1) applyLayoutIteration(positions, edges, layoutNeighbors)
+    for (let i = 0; i < batch; i += 1) applyLayoutIteration(positions, edges, layoutNeighbors, layoutBranches!)
     layoutIterations -= batch
     active = layoutIterations > 0
   } else if (draggingIndex >= 0 || running) {
@@ -211,6 +212,7 @@ self.onmessage = (event: MessageEvent<Incoming>) => {
     draggingIndex = -1
     running = false
     layoutIterations = 0
+    layoutBranches = null
     return
   }
   if (message.type === 'dragStart') {
@@ -230,6 +232,8 @@ self.onmessage = (event: MessageEvent<Incoming>) => {
     postActivity(true)
     ensureTimer()
   } else if (message.type === 'layout') {
+    layoutBranches = buildLayoutBranches(positions, edges, layoutNeighbors)
+    velocities.fill(0)
     activeMask = new Uint8Array(ids.length)
     activeMask.fill(1)
     layoutIterations = ids.length > 1600 ? 90 : ids.length > 700 ? 120 : 160
