@@ -5,6 +5,8 @@ import { AttachmentPanel } from './AttachmentPanel'
 import { getPersistenceStatus, subscribePersistenceStatus } from '../services/persistence'
 import { useEffect } from 'react'
 import { referencedNoteIds } from '../services/noteLinks'
+import { appendNoteText, richDocument } from '../services/noteContent'
+const RichEditor = lazy(() => import('./RichEditor'))
 const WikiContent = lazy(() => import('./WikiContent').then(module => ({ default: module.WikiContent })))
 
 type Props = {
@@ -19,7 +21,7 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
   useEffect(() => subscribePersistenceStatus(setSaveStatus), [])
   const selectedId = useGraphStore((s) => s.selectedId)
   const [linkQuery, setLinkQuery] = useState('')
-  const [contentMode, setContentMode] = useState<'edit' | 'read'>('edit')
+  const [contentMode, setContentMode] = useState<'edit' | 'read' | 'source'>('edit')
 
   const node = useGraphStore(useShallow((s) => {
     const found = s.nodes.find((n) => n.id === selectedId)
@@ -114,19 +116,17 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
             <div className="content-mode-switch" role="tablist" aria-label="Content mode">
               <button type="button" className={contentMode === 'edit' ? 'active' : ''} onClick={() => setContentMode('edit')}>Edit</button>
               <button type="button" className={contentMode === 'read' ? 'active' : ''} onClick={() => setContentMode('read')}>Read</button>
+              {!richDocument(node.content) ? <button type="button" className={contentMode === 'source' ? 'active' : ''} onClick={() => setContentMode('source')}>Markdown</button> : null}
             </div>
           )}
         </div>
 
-        {contentMode === 'read' ? (
+        {contentMode === 'source' && !richDocument(node.content) ? (
+          <textarea className="content-input" aria-label="Markdown source" value={node.content} onChange={e => updateNode(node.id, { content: e.target.value })} />
+        ) : contentMode === 'read' && !richDocument(node.content) ? (
           <Suspense fallback={<p>Opening reading view…</p>}><WikiContent content={node.content} linkTargets={node.linkTargets} enabled={linkNavigationEnabled} onNavigate={onNavigate} /></Suspense>
         ) : (
-          <textarea
-            className="content-input"
-            value={node.content}
-            onChange={(e) => updateNode(node.id, { content: e.target.value })}
-            placeholder={linkNavigationEnabled ? 'Write the full note here… Use [[Note title]] or [[Note title|custom label]] for internal links.' : 'Write the full note here…'}
-          />
+          <Suspense fallback={<p>Opening editor…</p>}><RichEditor key={`${node.id}:${contentMode}`} nodeId={node.id} content={node.content} readOnly={contentMode === 'read'} enabled={linkNavigationEnabled} linkTargets={node.linkTargets} onNavigate={onNavigate} onBusyChange={onBusyChange} /></Suspense>
         )}
       </section>
 
@@ -136,7 +136,7 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
         let label = base, suffix = 2
         while ((node.linkTargets?.[label.toLocaleLowerCase()] && node.linkTargets[label.toLocaleLowerCase()] !== target.id)
           || nodes.some(n => n.id !== target.id && n.title.trim().toLocaleLowerCase() === label.toLocaleLowerCase())) label = `${base} (${suffix++})`
-        updateNode(node.id, { content: node.content + `${node.content ? '\n' : ''}[[${label}]]`, linkTargets: { ...node.linkTargets, [label.toLocaleLowerCase()]: target.id } })
+        updateNode(node.id, { content: appendNoteText(node.content, `[[${label}]]`), linkTargets: { ...node.linkTargets, [label.toLocaleLowerCase()]: target.id } })
       }}><option value="">Choose a note…</option>{nodes.filter(n => n.id !== node.id && n.title.toLocaleLowerCase().includes(linkQuery.trim().toLocaleLowerCase())).slice(0, 100).map((target, index) => <option key={target.id} value={target.id}>{target.title || 'Untitled'} · {target.summary.slice(0, 45) || `Note ${index + 1}`}</option>)}</select></label> : null}
       {linkNavigationEnabled && backlinks.length ? <section className="linked-nav-block"><span className="field-label">MENTIONED IN</span><div className="linked-nav-list">{backlinks.map(source => <button key={source.id} onClick={() => onNavigate?.(source.id)}>{source.title || 'Untitled'}</button>)}</div></section> : null}
       <AttachmentPanel key={`attachments-${node.id}`} node={node} onBusyChange={onBusyChange} />

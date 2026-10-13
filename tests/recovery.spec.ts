@@ -50,10 +50,10 @@ test('oldest of twenty snapshots restores without losing current unsaved edits',
   await recovery(page); await page.getByRole('tab', { name: 'Snapshots', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Restore snapshot', exact: true })).toHaveCount(20)
   await page.getByRole('button', { name: 'Restore snapshot', exact: true }).last().click()
-  await expect(page.locator('.content-input')).toHaveValue('Version 0')
+  await expect(page.locator('.content-input')).toHaveText('Version 0')
   await recovery(page); await page.getByRole('tab', { name: 'Snapshots', exact: true }).click()
   await page.getByRole('button', { name: 'Restore snapshot', exact: true }).first().click()
-  await expect(page.locator('.content-input')).toHaveValue('Unsaved safety copy')
+  await expect(page.locator('.content-input')).toHaveText('Unsaved safety copy')
 })
 
 test('backup copy exports current memory after a failed save', async ({ page }) => {
@@ -114,8 +114,8 @@ test('PDF and image previews are local and page controls render the second page'
   await page.getByLabel('Attach files', { exact: true }).setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=', 'base64') })
   await expect(page.locator('.attachment-row')).toHaveCount(2)
   await page.getByRole('button', { name: 'Preview pixel.png', exact: true }).click()
-  await expect(page.getByRole('dialog').getByRole('img')).toBeVisible()
-  await expect.poll(() => page.getByRole('dialog').getByRole('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+  await expect(page.getByRole('dialog').getByLabel('Original image', { exact: true })).toBeVisible()
+  await expect.poll(() => page.getByRole('dialog').getByLabel('Original image', { exact: true }).evaluate(canvas => (canvas as HTMLCanvasElement).width)).toBeGreaterThan(0)
   expect(errors).toEqual([])
 })
 

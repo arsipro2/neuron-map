@@ -1,4 +1,6 @@
+import { ANNOTATION_MIME } from '../services/imageAnnotations'
 import { useEffect, useRef, useState } from 'react'
+import { imageAnnotationIds, richDocument } from '../services/noteContent'
 import { graphAttachments } from '../types'
 import { AttachmentPreview } from './AttachmentPreview'
 import type { Attachment, NoteNode } from '../types'
@@ -6,10 +8,10 @@ import { useGraphStore } from '../store/useGraphStore'
 import { getActiveWorkspaceId } from '../services/persistence'
 import { downloadAttachment, isDesktop, openAttachment, MAX_ATTACHMENT_BYTES, MAX_WORKSPACE_ATTACHMENT_BYTES, readAttachment, storeAttachment } from '../services/attachments'
 
-type Props = { node: Pick<NoteNode, 'id' | 'attachments'>; onBusyChange: (busy: boolean, message?: string) => void }
+type Props = { node: Pick<NoteNode, 'id' | 'attachments' | 'content'>; onBusyChange: (busy: boolean, message?: string) => void }
 export const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KiB` : `${(bytes / 1024 ** 2).toFixed(1)} MiB`
 
-function AttachmentRow({ file, onRemove, onError }: { file: Attachment; onRemove: () => void; onError: (message: string) => void }) {
+function AttachmentRow({ nodeId, file, onRemove, onError }: { nodeId: string; file: Attachment; onRemove: () => void; onError: (message: string) => void }) {
   const [preview, setPreview] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [action, setAction] = useState<'opening' | 'saving' | null>(null)
@@ -43,11 +45,13 @@ function AttachmentRow({ file, onRemove, onError }: { file: Attachment; onRemove
       {desktop ? <button disabled={action !== null} aria-label={`Save a copy of ${file.name}`} onClick={() => void act('saving')}>Save a copy</button> : null}
       {['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/avif', 'application/pdf'].includes(file.mime) || /\.pdf$/i.test(file.name) ? <button aria-label={`Preview ${file.name}`} onClick={() => setExpanded(true)}>Preview</button> : null}
     </div>
-    {expanded && workspaceId ? <AttachmentPreview file={file} workspaceId={workspaceId} onClose={() => setExpanded(false)} /> : null}
+    {expanded && workspaceId ? <AttachmentPreview nodeId={nodeId} file={file} workspaceId={workspaceId} onClose={() => setExpanded(false)} /> : null}
   </li>
 }
 
 export function AttachmentPanel({ node, onBusyChange }: Props) {
+  const annotationIds = imageAnnotationIds(node.content)
+  const visibleFiles = node.attachments?.filter(file => !annotationIds.has(file.id) && file.mime !== ANNOTATION_MIME) ?? []
   const input = useRef<HTMLInputElement>(null)
   const busy = useRef(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,10 +79,13 @@ export function AttachmentPanel({ node, onBusyChange }: Props) {
     onDragOver={(event) => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragOver(true) } }}
     onDragLeave={() => setDragOver(false)}
     onDrop={(event) => { event.preventDefault(); setDragOver(false); void addFiles(Array.from(event.dataTransfer.files)) }}>
-    <div className="content-head-row"><span className="field-label">ATTACHMENTS · {node.attachments?.length ?? 0}</span>
+    <div className="content-head-row"><span className="field-label">ATTACHMENTS · {visibleFiles.length}</span>
       <button type="button" className="attach-button" onClick={() => input.current?.click()}>+ Attach files</button></div>
     <input ref={input} aria-label="Attach files" type="file" multiple hidden onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void addFiles(files) }} />
-    {node.attachments?.length ? <ul className="attachment-list">{node.attachments.map((file) => <AttachmentRow key={file.id} file={file} onError={setError} onRemove={() => {
+    {visibleFiles.length ? <ul className="attachment-list">{visibleFiles.map((file) => <AttachmentRow key={file.id} nodeId={node.id} file={file} onError={setError} onRemove={() => {
+      const doc = richDocument(node.content)
+      const referenced = (value: typeof doc): boolean => Boolean(value && ((value.type === 'attachmentImage' && value.attrs?.attachmentId === file.id) || value.content?.some(referenced)))
+      if (referenced(doc)) { setError('Remove this image from the content before removing its attachment.'); return }
       if (window.confirm(`Remove “${file.name}” from this note?`)) useGraphStore.getState().updateNode(node.id, { attachments: node.attachments?.filter((item) => item.id !== file.id) })
     }} />)}</ul> : <p className="attachment-hint">Drop files here or choose them above. Any file type, up to 20 MiB each.</p>}
     {isDesktop() && node.attachments?.length ? <p className="attachment-hint">Click a filename to open a copy in your default app. To keep external edits in this note, attach the edited file again.</p> : null}

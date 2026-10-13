@@ -1,3 +1,4 @@
+import { notePlainText } from './noteContent'
 import type { NoteNode } from '../types'
 
 export const WIKI_PATTERN = /\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]/g
@@ -27,7 +28,7 @@ export function resolveNoteLink(target: string, notes: Pick<NoteNode, 'id' | 'ti
 }
 export function captureLinkTargets(content: string, notes: Pick<NoteNode, 'id' | 'title'>[], previous: Record<string, string> = {}) {
   const result: Record<string, string> = Object.create(null)
-  for (const match of content.matchAll(WIKI_PATTERN)) {
+  for (const match of notePlainText(content).matchAll(WIKI_PATTERN)) {
     const key = match[1].trim().toLocaleLowerCase()
     const target = Object.hasOwn(previous, key) ? previous[key] : resolveNoteLink(match[1], notes)
     if (target) result[key] = target
@@ -35,5 +36,5 @@ export function captureLinkTargets(content: string, notes: Pick<NoteNode, 'id' |
   return result
 }
 export function referencedNoteIds(content: string, notes: Pick<NoteNode, 'id' | 'title'>[], targets: Record<string, string> = {}) {
-  return new Set(Array.from(content.matchAll(WIKI_PATTERN)).map((match) => resolveNoteLink(match[1], notes, targets)).filter((id): id is string => Boolean(id)))
+  return new Set(Array.from(notePlainText(content, targets).matchAll(WIKI_PATTERN)).map((match) => resolveNoteLink(match[1], notes, targets)).filter((id): id is string => Boolean(id)))
 }

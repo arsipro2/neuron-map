@@ -1,7 +1,7 @@
 {
   "name": "neuron-map",
   "private": true,
-  "version": "0.22.6",
+  "version": "0.23.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -32,14 +32,26 @@
     "@react-three/drei": "10.7.8",
     "@react-three/fiber": "9.7.0",
     "@tauri-apps/api": "2.12.1",
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-code-block-lowlight": "3.31.4",
+    "@tiptap/extension-subscript": "3.31.4",
+    "@tiptap/extension-superscript": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/extension-task-item": "3.31.4",
+    "@tiptap/extension-task-list": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/react": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
+    "lowlight": "3.3.0",
+    "marked": "18.1.1",
+    "pdfjs-dist": "6.4.299",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "0.180.0",
-    "zustand": "5.0.8",
     "react-markdown": "10.1.0",
-    "remark-gfm": "4.0.1",
     "rehype-highlight": "7.0.2",
-    "pdfjs-dist": "6.4.299"
+    "remark-gfm": "4.0.1",
+    "three": "0.180.0",
+    "zustand": "5.0.8"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -48,9 +60,9 @@
     "@types/react-dom": "19.2.3",
     "@types/three": "0.180.0",
     "@vitejs/plugin-react": "5.0.4",
+    "esbuild": "0.25.12",
     "typescript": "5.9.2",
-    "vite": "7.3.6",
-    "esbuild": "0.25.12"
+    "vite": "7.3.6"
   },
   "engines": {
     "node": ">=22.13.0",

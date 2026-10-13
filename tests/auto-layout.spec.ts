@@ -49,7 +49,7 @@ test('auto layout separates branches, supports undo, and saves the arranged posi
   await expect.poll(snapshot).toEqual(arranged)
   const p = await point(page, 'beta')
   await page.mouse.click(p.x, p.y)
-  await expect(page.locator('.content-input')).toHaveValue('Content beta')
+  await expect(page.locator('.content-input')).toHaveText('Content beta')
   expect(errors).toEqual([])
 })
 

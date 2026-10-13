@@ -1,6 +1,6 @@
 [package]
 name = "neuron-map-storage-tests"
-version = "0.22.6"
+version = "0.23.0"
 edition = "2021"
 publish = false
 

@@ -959,6 +959,31 @@ mod tests {
     assert_eq!(load_workspace(f.db(), imported.id).unwrap().nodes[0].content, "Содержимое");
   }
   #[test]
+  fn rich_notes_and_image_layers_survive_desktop_export_import() {
+    let f = Fixture::new();
+    let original = b"\x89PNG\r\n\x1a\n";
+    let layer = br##"{"version":1,"imageId":"original","marks":[{"kind":"text","color":"#ff4444","size":40,"text":"Label","x":0.2,"y":0.5}]}"##;
+    let image = AttachmentRecord { id: "original".into(), name: "image.png".into(), mime: "image/png".into(), size: original.len() as u64, added_at: 1 };
+    let annotation = AttachmentRecord { id: "layer".into(), name: "image-original.annotations.json".into(), mime: "application/vnd.neuron-map.image-annotations+json".into(), size: layer.len() as u64, added_at: 2 };
+    store_attachment(f.db(), "main".into(), image.clone(), BASE64.encode(original)).unwrap();
+    store_attachment(f.db(), "main".into(), annotation.clone(), BASE64.encode(layer)).unwrap();
+    let document = serde_json::json!({ "type": "doc", "content": [
+      { "type": "paragraph", "content": [{ "type": "text", "text": "H2O", "marks": [{ "type": "bold" }, { "type": "subscript" }] }] },
+      { "type": "attachmentImage", "attrs": { "attachmentId": "original", "annotationId": "layer", "alt": "Diagram" } }
+    ] });
+    let content = format!("neuron-rich-text:v1\n{}", document);
+    let mut state = note_state(); state.nodes[0].content = content.clone();
+    state.nodes[0].attachments = vec![image, annotation];
+    save_workspace(f.db(), "main".into(), state, true).unwrap();
+    let export = export_workspace_file(f.db(), "main".into()).unwrap();
+    let imported = import_workspace_payload(f.db(), fs::read_to_string(export.path).unwrap()).unwrap();
+    let restored = load_workspace(f.db(), imported.id.clone()).unwrap();
+    assert_eq!(restored.nodes[0].content, content);
+    assert_eq!(restored.nodes[0].attachments.len(), 2);
+    assert_eq!(attachment_bytes(f.db(), imported.id.clone(), "original".into()).unwrap().1, original);
+    assert_eq!(attachment_bytes(f.db(), imported.id, "layer".into()).unwrap().1, layer);
+  }
+  #[test]
   fn restore_snapshot_recovers_removed_attachment() {
     let f = Fixture::new();
     store_attachment(f.db(), "main".into(), file(), BASE64.encode([1,2,3,4,5])).unwrap();
