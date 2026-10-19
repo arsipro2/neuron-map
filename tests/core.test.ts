@@ -194,3 +194,50 @@ test('desktop opening uses stored IDs, stays separate from Save a copy and propa
     await assert.rejects(openAttachment('workspace-id', attachment), /No default application/)
   } finally { Object.assign(globalThis, { window: previous }) }
 })
+
+test('working neighborhoods grow through several generations without exposing existing hidden notes', async () => {
+  const { visibleNoteIds } = await import('../src/services/graphView')
+  const store = useGraphStore.getState()
+  store.hydrateGraph(['a', 'b', 'c', 'unrelated'].map(id => node(id)), [
+    { id: 'ab', source: 'a', target: 'b' }, { id: 'bc', source: 'b', target: 'c' },
+  ])
+  store.setNeighborhood('a')
+  assert.deepEqual([...visibleNoteIds()!].sort(), ['a', 'b'])
+  const child = store.addLinkedNode('b')!, grandchild = store.addLinkedNode(child)!
+  const loose = store.addNode()
+  assert.deepEqual([...visibleNoteIds()!].sort(), ['a', 'b', child, grandchild, loose].sort())
+  store.setSelected(grandchild); store.updateNode(grandchild, { content: 'Branch contents' })
+  store.deleteEdge('ab')
+  assert.equal(visibleNoteIds()!.has('b'), true)
+  assert.equal(visibleNoteIds()!.has('c'), false)
+  assert.equal(store.addLinkedNode('c'), null)
+  store.connectNodes(grandchild, 'c')
+  assert.equal(useGraphStore.getState().edges.some(e => e.source === grandchild && e.target === 'c'), false)
+  assert.equal(useGraphStore.getState().neighborhoodId, 'a')
+  store.setNeighborhood(null)
+  assert.equal(visibleNoteIds(), null)
+  assert.equal(useGraphStore.getState().nodes.length, 7)
+})
+
+test('undo, redo, root deletion and restore preserve an active neighborhood', async () => {
+  const { visibleNoteIds } = await import('../src/services/graphView')
+  const store = useGraphStore.getState()
+  store.hydrateGraph(['a', 'hidden'].map(id => node(id)), [])
+  // The old snapshot selects a hidden note; undo must not select it in this view.
+  store.setSelected('hidden'); store.updateNode('hidden', { title: 'Before entry' })
+  store.setSelected('a'); store.setNeighborhood('a'); store.undo()
+  assert.equal(useGraphStore.getState().selectedId, null)
+  assert.deepEqual([...visibleNoteIds()!], ['a'])
+  const child = store.addLinkedNode('a')!
+  store.undo(); assert.equal(useGraphStore.getState().nodes.some(n => n.id === child), false)
+  store.redo(); assert.equal(useGraphStore.getState().selectedId, child)
+  assert.equal(visibleNoteIds()!.has(child), true)
+  store.deleteNode('a'); assert.equal(useGraphStore.getState().neighborhoodId, 'a')
+  assert.equal(visibleNoteIds()!.has('hidden'), false)
+  store.restoreNode('a'); assert.equal(visibleNoteIds()!.has('a'), true)
+  store.deleteNode('hidden'); store.restoreNode('hidden')
+  assert.equal(useGraphStore.getState().selectedId, null)
+  assert.equal(visibleNoteIds()!.has('hidden'), false)
+  store.hydrateGraph([node('other-workspace')], [])
+  assert.equal(visibleNoteIds(), null)
+})

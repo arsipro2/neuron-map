@@ -5,7 +5,8 @@ import { searchNotes } from '../services/searchNotes'
 type Props = { query: string; onQueryChange: (value: string) => void; onNavigate: (id: string) => void }
 export function SearchPanel({ query, onNavigate }: Props) {
   const nodes = useGraphStore(state => state.nodes)
-  const results = useMemo(() => searchNotes(nodes, query), [nodes, query])
+  const visible = useGraphStore(state => state.neighborhoodNodeIds)
+  const results = useMemo(() => searchNotes(visible ? nodes.filter(node => visible.has(node.id)) : nodes, query), [nodes, query, visible])
   if (!query.trim()) return null
   return <div className="search-popover">{results.length ? results.map(({ node }) => <button key={node.id} className="search-result" onClick={() => onNavigate(node.id)}>
     <strong>{node.title || 'Untitled'}</strong><span>{(node.summary || node.content || 'No description').slice(0, 130)}</span>

@@ -196,7 +196,7 @@ function BatchedEdgeLayer({ reducedMotion, pulseCount: activePulses }: { reduced
   useFrame(({ clock }) => {
     const runtime = graphEngine.runtime, visible = visibleNoteIds()
     camera.updateMatrixWorld()
-    const stamp = `${runtime.version}:${camera.matrixWorld.elements.join(',')}:${camera.projectionMatrix.elements.join(',')}:${selectedId}:${selectedEdgeId}:${neighborhoodId}:${reducedMotion}`
+    const stamp = `${runtime.version}:${camera.matrixWorld.elements.join(',')}:${camera.projectionMatrix.elements.join(',')}:${selectedId}:${selectedEdgeId}:${neighborhoodId}:${useGraphStore.getState().structureVersion}:${reducedMotion}`
     if (cache.current.stamp !== stamp || cache.current.edges !== edges) {
       cache.current = { stamp, edges, pulses: [] }; graphDiagnostics.edgeGeometryBuilds++
       projection.setCamera(camera)

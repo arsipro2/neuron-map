@@ -108,7 +108,7 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
       </label>
 
       <TagsEditor key={`tags-${node.id}`} tags={node.tags ?? []} onChange={tags => updateNode(node.id, { tags })} />
-      <div className="note-tools"><button onClick={() => useGraphStore.getState().setNeighborhood(neighborhoodId === node.id ? null : node.id)}>{neighborhoodId === node.id ? 'Show all notes' : 'Show neighbors'}</button></div>
+      <div className="note-tools"><button onClick={() => useGraphStore.getState().setNeighborhood(neighborhoodId ? null : node.id)}>{neighborhoodId ? 'Show all notes' : 'Show neighbors'}</button></div>
       <section className="editor-block content-block">
         <div className="content-head-row">
           <span className="field-label">CONTENT</span>

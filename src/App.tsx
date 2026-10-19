@@ -1,3 +1,4 @@
+import { visibleNoteIds } from './services/graphView'
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GraphScene } from './components/GraphScene'
@@ -148,7 +149,8 @@ export default function App() {
     }
   }, [selectedId, activeWorkspace?.id, sceneRevision])
   const travelNotes = (direction: number) => {
-    const history = navigation.current, ids = new Set(useGraphStore.getState().nodes.map(n => n.id))
+    const history = navigation.current, visible = visibleNoteIds()
+    const ids = new Set(useGraphStore.getState().nodes.filter(n => !visible || visible.has(n.id)).map(n => n.id))
     let next = history.index + direction
     while (next >= 0 && next < history.ids.length && !ids.has(history.ids[next])) next += direction
     if (next < 0 || next >= history.ids.length) return
@@ -158,7 +160,10 @@ export default function App() {
 
   const navigateToNode = (id: string) => {
     if (!useGraphStore.getState().nodes.some(n => n.id === id)) return
-    useGraphStore.getState().setNeighborhood(null)
+    if (visibleNoteIds() && !visibleNoteIds()!.has(id)) {
+      setWorkspaceError('This note is outside the current neighborhood. Click Show all notes to open it.')
+      return
+    }
     setSelected(id)
     setEditorOpen(true)
     setSearch('')
@@ -385,7 +390,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-and-workspace">
-          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.23.0</span></div></div>
+          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.23.1</span></div></div>
           <WorkspaceMenu
             workspaces={workspaces}
             activeWorkspace={activeWorkspace}
@@ -476,7 +481,7 @@ export default function App() {
             onLinkToolChange={setLinkToolActive}
             focusRequest={focusRequest}
           />
-          {neighborhoodId ? <div className="neighborhood-banner">Showing this note and its neighbors <button onClick={() => useGraphStore.getState().setNeighborhood(null)}>Show all</button></div> : null}
+          {neighborhoodId ? <div className="neighborhood-banner">Working in this neighborhood <button onClick={() => useGraphStore.getState().setNeighborhood(null)}>Show all notes</button></div> : null}
           <div className="scene-help"><span>Search</span><b>Ctrl+K · title, description, content</b><span>Save</span><b>Ctrl+S · autosave every 5 min</b><span>Cursor</span><b>drag orbit · RMB pan · scroll zoom</b><span>Flight</span><b>F · WASD · mouse · Shift boost</b><span>Links</span><b>select line · Delete removes it</b></div>
           <div className="shortcut-help">{preferences.linkNavigationEnabled ? 'Internal navigation ON · linked notes + [[wiki-links]]' : 'Internal navigation OFF · enable it in ⚙ Settings'}</div>
         </div>

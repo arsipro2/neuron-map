@@ -9,6 +9,7 @@ type NodePatch = Partial<Pick<NoteNode, 'title' | 'summary' | 'content' | 'attac
 type GraphState = Snapshot & {
   selectionVersion: number; structureVersion: number; graphEpoch: number; layoutRequest: number
   undoDepth: number; redoDepth: number; neighborhoodId: string | null
+  neighborhoodNodeIds: ReadonlySet<string> | null
   setNeighborhood: (id: string | null) => void
   setSelected: (id: string | null) => void
   setSelectedEdge: (id: string | null) => void
@@ -91,14 +92,27 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     graphEngine.stop()
     // Synchronize before subscribers can read positions from the old graph.
     graphEngine.syncGraph(next.nodes, next.edges, true)
-    set(state => ({ ...next, undoDepth: past.length, redoDepth: future.length, neighborhoodId: null,
+    set(state => ({ ...next, undoDepth: past.length, redoDepth: future.length,
+      selectedId: next.selectedId && (!state.neighborhoodNodeIds || state.neighborhoodNodeIds.has(next.selectedId)) ? next.selectedId : null,
+      selectedEdgeId: next.selectedEdgeId && next.edges.some(edge => edge.id === next.selectedEdgeId && (!state.neighborhoodNodeIds || (state.neighborhoodNodeIds.has(edge.source) && state.neighborhoodNodeIds.has(edge.target)))) ? next.selectedEdgeId : null,
       graphEpoch: state.graphEpoch + 1, structureVersion: state.structureVersion + 1, selectionVersion: state.selectionVersion + 1 }))
   }
   return {
     nodes: initialNodes, edges: initialEdges, trash: emptyTrash(), selectedId: 'root', selectedEdgeId: null,
-    selectionVersion: 0, structureVersion: 0, graphEpoch: 0, layoutRequest: 0, undoDepth: 0, redoDepth: 0, neighborhoodId: null,
-    setNeighborhood: id => set({ neighborhoodId: id }),
-    setSelected: id => set(state => ({ selectedId: id && state.nodes.some(n => n.id === id) ? id : null,
+    selectionVersion: 0, structureVersion: 0, graphEpoch: 0, layoutRequest: 0, undoDepth: 0, redoDepth: 0, neighborhoodId: null, neighborhoodNodeIds: null,
+    setNeighborhood: id => {
+      const state = get()
+      if (id !== null && !state.nodes.some(node => node.id === id)) return
+      const ids = id === null ? null : new Set([id])
+      if (ids) for (const edge of state.edges) {
+        if (edge.source === id) ids.add(edge.target)
+        if (edge.target === id) ids.add(edge.source)
+      }
+      set({ neighborhoodId: id, neighborhoodNodeIds: ids,
+        selectedId: state.selectedId && (!ids || ids.has(state.selectedId)) ? state.selectedId : null,
+        selectedEdgeId: null, structureVersion: state.structureVersion + 1 })
+    },
+    setSelected: id => set(state => ({ selectedId: id && (!state.neighborhoodNodeIds || state.neighborhoodNodeIds.has(id)) && state.nodes.some(n => n.id === id) ? id : null,
       selectedEdgeId: null, selectionVersion: state.selectionVersion + 1 })),
     setSelectedEdge: id => set(state => ({ selectedEdgeId: id, selectedId: id === null ? state.selectedId : null })),
     checkpoint: () => set(remember(get())),
@@ -106,21 +120,24 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     addNode: (position = [0, 0.5, 0], title = 'New note') => {
       const id = crypto.randomUUID(), state = get(), history = remember(state)
       set({ ...history, nodes: [...state.nodes, { id, title, summary: '', content: '', position: validPosition(position) }],
-        selectedId: id, selectedEdgeId: null, neighborhoodId: null, structureVersion: state.structureVersion + 1 })
+        selectedId: id, selectedEdgeId: null,
+        neighborhoodNodeIds: state.neighborhoodNodeIds ? new Set([...state.neighborhoodNodeIds, id]) : null, structureVersion: state.structureVersion + 1 })
       return id
     },
     addLinkedNode: (sourceId, position) => {
       const state = get(), source = state.nodes.find(node => node.id === sourceId)
-      if (!source) return null
+      if (!source || (state.neighborhoodNodeIds && !state.neighborhoodNodeIds.has(sourceId))) return null
       const id = crypto.randomUUID(), history = remember(state), p = graphEngine.runtime.positionOf(sourceId) ?? source.position
       set({ ...history, nodes: [...state.nodes, { id, title: 'New note', summary: '', content: '', position: validPosition(position ?? [p[0] + 2.2, p[1], p[2]]) }],
         edges: [...state.edges, { id: crypto.randomUUID(), source: sourceId, target: id }],
-        selectedId: id, selectedEdgeId: null, neighborhoodId: null, structureVersion: state.structureVersion + 1 })
+        selectedId: id, selectedEdgeId: null,
+        neighborhoodNodeIds: state.neighborhoodNodeIds ? new Set([...state.neighborhoodNodeIds, id]) : null, structureVersion: state.structureVersion + 1 })
       return id
     },
     connectNodes: (source, target) => {
       const state = get()
-      if (source === target || !state.nodes.some(n => n.id === source) || !state.nodes.some(n => n.id === target)
+      if ((state.neighborhoodNodeIds && (!state.neighborhoodNodeIds.has(source) || !state.neighborhoodNodeIds.has(target)))
+        || source === target || !state.nodes.some(n => n.id === source) || !state.nodes.some(n => n.id === target)
         || state.edges.some(e => (e.source === source && e.target === target) || (e.source === target && e.target === source))) return
       const edge = { id: crypto.randomUUID(), source, target }
       set({ ...remember(state), edges: [...state.edges, edge], selectedEdgeId: edge.id, selectedId: null, structureVersion: state.structureVersion + 1 })
@@ -139,13 +156,13 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       set({ ...remember(state), nodes: state.nodes.filter(n => n.id !== id), edges: state.edges.filter(e => !removed.includes(e)),
         trash: { nodes: [...state.trash.nodes, { node: { ...node, position: graphEngine.runtime.positionOf(id) ?? node.position }, deletedAt: Date.now() }], edges: [...state.trash.edges, ...removed] },
         selectedId: state.selectedId === id ? null : state.selectedId, selectedEdgeId: null,
-        neighborhoodId: state.neighborhoodId === id ? null : state.neighborhoodId, structureVersion: state.structureVersion + 1 })
+        structureVersion: state.structureVersion + 1 })
     },
     restoreNode: id => {
       const state = get(), entry = state.trash.nodes.find(n => n.node.id === id); if (!entry) return
       const nodes = [...state.nodes, entry.node], ids = new Set(nodes.map(n => n.id))
       const restored = state.trash.edges.filter(e => ids.has(e.source) && ids.has(e.target))
-      set({ ...remember(state), nodes, edges: [...state.edges, ...restored], selectedId: id, selectedEdgeId: null,
+      set({ ...remember(state), nodes, edges: [...state.edges, ...restored], selectedId: !state.neighborhoodNodeIds || state.neighborhoodNodeIds.has(id) ? id : null, selectedEdgeId: null,
         trash: { nodes: state.trash.nodes.filter(n => n !== entry), edges: state.trash.edges.filter(e => !restored.includes(e)) },
         structureVersion: state.structureVersion + 1 })
     },
@@ -163,7 +180,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
       past.length = 0; future.length = 0; coalesceKey = ''
       const all = [...nodes, ...trash.nodes.map(entry => entry.node)]
       set(state => ({ nodes: normalize(nodes, all), edges, trash: { ...trash, nodes: trash.nodes.map(entry => ({ ...entry, node: normalize([entry.node], all)[0] })) },
-        selectedId: nodes[0]?.id ?? null, selectedEdgeId: null, neighborhoodId: null, undoDepth: 0, redoDepth: 0,
+        selectedId: nodes[0]?.id ?? null, selectedEdgeId: null, neighborhoodId: null, neighborhoodNodeIds: null, undoDepth: 0, redoDepth: 0,
         structureVersion: state.structureVersion + 1, graphEpoch: state.graphEpoch + 1, selectionVersion: state.selectionVersion + 1 }))
     },
     applyRuntimePositions: positions => set(state => ({ nodes: state.nodes.map(node => {
@@ -173,7 +190,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     resetGraph: () => {
       const state = get(), history = remember(state)
       graphEngine.stop(); graphEngine.syncGraph(initialNodes, initialEdges, true)
-      set({ ...history, nodes: initialNodes, edges: initialEdges, trash: emptyTrash(), selectedId: 'root', selectedEdgeId: null, neighborhoodId: null,
+      set({ ...history, nodes: initialNodes, edges: initialEdges, trash: emptyTrash(), selectedId: 'root', selectedEdgeId: null, neighborhoodId: null, neighborhoodNodeIds: null,
         structureVersion: state.structureVersion + 1, graphEpoch: state.graphEpoch + 1, layoutRequest: state.layoutRequest + 1 })
     },
   }
