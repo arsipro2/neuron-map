@@ -2,10 +2,11 @@ import { lazy, Suspense, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useGraphStore } from '../store/useGraphStore'
 import { AttachmentPanel } from './AttachmentPanel'
-import { getPersistenceStatus, subscribePersistenceStatus } from '../services/persistence'
+import { getActiveWorkspaceId, getPersistenceStatus, subscribePersistenceStatus } from '../services/persistence'
 import { useEffect } from 'react'
 import { referencedNoteIds } from '../services/noteLinks'
 import { appendNoteText, richDocument } from '../services/noteContent'
+const DiagramEditor = lazy(() => import('./DiagramEditor'))
 const RichEditor = lazy(() => import('./RichEditor'))
 const WikiContent = lazy(() => import('./WikiContent').then(module => ({ default: module.WikiContent })))
 
@@ -20,6 +21,7 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
   const [saveStatus, setSaveStatus] = useState(getPersistenceStatus())
   useEffect(() => subscribePersistenceStatus(setSaveStatus), [])
   const selectedId = useGraphStore((s) => s.selectedId)
+  const [diagramNodeId, setDiagramNodeId] = useState<string | null>(null)
   const [linkQuery, setLinkQuery] = useState('')
   const [contentMode, setContentMode] = useState<'edit' | 'read' | 'source'>('edit')
 
@@ -111,7 +113,7 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
       <div className="note-tools"><button onClick={() => useGraphStore.getState().setNeighborhood(neighborhoodId ? null : node.id)}>{neighborhoodId ? 'Show all notes' : 'Show neighbors'}</button></div>
       <section className="editor-block content-block">
         <div className="content-head-row">
-          <span className="field-label">CONTENT</span>
+          <span className="field-label">CONTENT</span><button className="diagram-open" onClick={() => setDiagramNodeId(node.id)}>Diagram</button>
           {(
             <div className="content-mode-switch" role="tablist" aria-label="Content mode">
               <button type="button" className={contentMode === 'edit' ? 'active' : ''} onClick={() => setContentMode('edit')}>Edit</button>
@@ -140,6 +142,8 @@ export function Inspector({ open, onBusyChange, linkNavigationEnabled = false, o
       }}><option value="">Choose a note…</option>{nodes.filter(n => n.id !== node.id && n.title.toLocaleLowerCase().includes(linkQuery.trim().toLocaleLowerCase())).slice(0, 100).map((target, index) => <option key={target.id} value={target.id}>{target.title || 'Untitled'} · {target.summary.slice(0, 45) || `Note ${index + 1}`}</option>)}</select></label> : null}
       {linkNavigationEnabled && backlinks.length ? <section className="linked-nav-block"><span className="field-label">MENTIONED IN</span><div className="linked-nav-list">{backlinks.map(source => <button key={source.id} onClick={() => onNavigate?.(source.id)}>{source.title || 'Untitled'}</button>)}</div></section> : null}
       <AttachmentPanel key={`attachments-${node.id}`} node={node} onBusyChange={onBusyChange} />
+
+      {diagramNodeId && getActiveWorkspaceId() ? <Suspense fallback={<p>Opening diagram editor…</p>}><DiagramEditor key={diagramNodeId} nodeId={diagramNodeId} workspaceId={getActiveWorkspaceId()!} onClose={() => setDiagramNodeId(null)} /></Suspense> : null}
 
       <div className="inspector-footer">
         <span>{saveStatus.state === 'saved' ? 'Saved locally' : saveStatus.state === 'saving' ? 'Saving…' : saveStatus.state === 'error' ? 'Save failed' : 'Unsaved changes'}</span>

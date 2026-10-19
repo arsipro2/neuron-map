@@ -1,3 +1,4 @@
+import { DIAGRAM_MIME } from './diagrams'
 import { ANNOTATION_MIME } from './imageAnnotations'
 import { notePlainText } from './noteContent'
 import type { NoteNode } from '../types'
@@ -7,7 +8,7 @@ export function searchNotes(notes: NoteNode[], query: string) {
   return notes.map(node => {
     const title = node.title.toLocaleLowerCase(), summary = node.summary.toLocaleLowerCase(), content = notePlainText(node.content, node.linkTargets ?? node).toLocaleLowerCase()
     const tags = (node.tags ?? []).map(tag => tag.toLocaleLowerCase())
-    const files = (node.attachments ?? []).filter(file => file.mime !== ANNOTATION_MIME).map(file => file.name.toLocaleLowerCase()).join(' ')
+    const files = (node.attachments ?? []).filter(file => file.mime !== ANNOTATION_MIME && file.mime !== DIAGRAM_MIME).map(file => file.name.toLocaleLowerCase()).join(' ')
     let score = 0
     for (const token of tokens) {
       if (token.startsWith('#')) { if (!tags.includes(token.slice(1))) return { node, score: 0 }; score += 80; continue }

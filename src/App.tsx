@@ -102,6 +102,7 @@ export default function App() {
       unlisten = await appWindow.onCloseRequested(async (event) => {
         event.preventDefault()
         if (closing || busyRef.current) return
+        if (!window.dispatchEvent(new Event('neuron-map:before-close', { cancelable: true }))) return
         closing = true
         setBusy(true)
         try {
@@ -390,7 +391,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-and-workspace">
-          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.23.1</span></div></div>
+          <div className="brand-group"><span className="brand-glyph">✦</span><div><strong>Neuron Map</strong><span className="version">0.24.0</span></div></div>
           <WorkspaceMenu
             workspaces={workspaces}
             activeWorkspace={activeWorkspace}

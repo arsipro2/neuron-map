@@ -1,3 +1,4 @@
+import { DIAGRAM_MIME } from '../services/diagrams'
 import { ANNOTATION_MIME } from '../services/imageAnnotations'
 import { useEffect, useRef, useState } from 'react'
 import { imageAnnotationIds, richDocument } from '../services/noteContent'
@@ -51,7 +52,7 @@ function AttachmentRow({ nodeId, file, onRemove, onError }: { nodeId: string; fi
 
 export function AttachmentPanel({ node, onBusyChange }: Props) {
   const annotationIds = imageAnnotationIds(node.content)
-  const visibleFiles = node.attachments?.filter(file => !annotationIds.has(file.id) && file.mime !== ANNOTATION_MIME) ?? []
+  const visibleFiles = node.attachments?.filter(file => !annotationIds.has(file.id) && file.mime !== ANNOTATION_MIME && file.mime !== DIAGRAM_MIME) ?? []
   const input = useRef<HTMLInputElement>(null)
   const busy = useRef(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,7 +89,7 @@ export function AttachmentPanel({ node, onBusyChange }: Props) {
       if (referenced(doc)) { setError('Remove this image from the content before removing its attachment.'); return }
       if (window.confirm(`Remove “${file.name}” from this note?`)) useGraphStore.getState().updateNode(node.id, { attachments: node.attachments?.filter((item) => item.id !== file.id) })
     }} />)}</ul> : <p className="attachment-hint">Drop files here or choose them above. Any file type, up to 20 MiB each.</p>}
-    {isDesktop() && node.attachments?.length ? <p className="attachment-hint">Click a filename to open a copy in your default app. To keep external edits in this note, attach the edited file again.</p> : null}
+    {isDesktop() && visibleFiles.length ? <p className="attachment-hint">Click a filename to open a copy in your default app. To keep external edits in this note, attach the edited file again.</p> : null}
     {error ? <p className="attachment-error" role="alert">{error}</p> : null}
   </section>
 }
